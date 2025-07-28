@@ -1,9 +1,10 @@
 import requests
 from bs4 import BeautifulSoup
+import json
+
 headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }
-link = "https://www.olx.ua/d/uk/obyavlenie/stl-pismoviy-asset-line-v-stil-loft-IDQ2od9.html?reason=hp%7Cpromoted"
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+}
 
 
 def getprice(link):
@@ -26,7 +27,7 @@ def getprice(link):
     name_text = 'Нет названия'
     description_text = 'Нет описания'
 
-    # --- Цена ---
+    # Цена
     if price_container:
         price_tag = price_container.find('h3')
         if price_tag:
@@ -36,17 +37,28 @@ def getprice(link):
     else:
         print('Не нашли контейнер с ценой!')
 
-    # --- Название ---
+    #Название
+    name_container = soup.find('div', attrs={"data-cy": "offer_title"})
+
+    if name_container:
+        name_tag = name_container.find('h4')
+        if name_tag:
+            name_text = name_tag.get_text(strip=True)
+            print(name_text)
+        else:
+            print('Не нашли тег <h4> внутри name_container!')
+    else:
+        print('Не нашли контейнер с названием!')
     if name_container:
         name_tag = name_container.find('h4')
         if name_tag:
             name_text = name_tag.get_text(strip=True)
         else:
-            print('Не нашли тег <h1> с названием внутри name_container!')
+            print('Не нашли тег <h4> с названием внутри name_container!')
     else:
         print('Не нашли контейнер с названием!')
 
-    # --- Описание ---
+    #Описание
     if description_container:
         description_div = description_container.find('div')
         if description_div:
@@ -57,30 +69,29 @@ def getprice(link):
     else:
         print('Не нашли контейнер с описанием!')
 
-    # --- Вывод ---
-    print('--------------------------------------')
-    print(f'Ссылка на товар: {link}')
-    print(f'Название товара: {name_text}')
-    print(f'Цена товара: {price_text}')
-    print(f'Описание:\n{description_text}')
-    print('--------------------------------------')
-    # return {
-    #     'link': link,
-    #     'name': name_text,
-    #     'price': price_text,
-    #     'description': description_text
-    # }
+    # Вывод
+    # print('--------------------------------------')
+    # print(f'Ссылка на товар: {link}')
+    # print(f'Название товара: {name_text}')
+    # print(f'Цена товара: {price_text}')
+    # print(f'Описание:\n{description_text}')
+    # print('--------------------------------------')
+
+    return {
+        'link': link,
+        'name': name_text,
+        'price': price_text,
+        'description': description_text
+    }
+
+
 def get_link(search_link):
-
-
     # Ищем контейнеры, где лежат ссылки
-
-
     links = []
-    pages=search_link
-    for page in range(1,26):
+    pages = search_link
+    for page in range(1, 26):
         print(f'Собираем страницу{page}')
-        search_link=f'{search_link}?page={page}'
+        search_link = f'{search_link}?page={page}'
         response = requests.get(search_link, headers=headers)
         html = response.text
         soup = BeautifulSoup(html, 'html.parser')
@@ -90,7 +101,7 @@ def get_link(search_link):
             a_tag = container.find('a')
             if a_tag and 'href' in a_tag.attrs:
                 link = a_tag['href']
-                # OLX иногда отдает относительную ссылку, добавим домен
+                # OLX иногда отдает относительную ссылку, добавим домен
                 if link.startswith('/'):
                     link = 'https://www.olx.ua' + link
                 links.append(link)
@@ -98,6 +109,15 @@ def get_link(search_link):
     print(links)
     print(len(links))
 
-# get_link('')
-
-# getprice('')
+result = []
+print("Для выбора нужно написать в консоль и нажать Enter")
+mode = input("Выбери режим (solo, file)")
+if mode == "file":
+    with open('links.txt') as f:
+        for line in f:
+            result.append(getprice(line))
+    with open('output.json', 'w', encoding='utf-8') as f:
+        json.dump(result, f, ensure_ascii=False, indent=4)
+else:
+    link=input("Введите ссылку: ")
+    print(getprice(link))
